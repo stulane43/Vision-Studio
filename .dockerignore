@@ -1,0 +1,27 @@
+# Build artifacts & deps (reinstalled/rebuilt in the image)
+node_modules
+.next
+out
+
+# Runtime data (must NOT be baked into the image — lives on a volume)
+.aidlc
+projects
+.buildtest
+data
+
+# Local env & secrets
+.env*.local
+
+# VCS & tooling
+.git
+.gitignore
+.claude
+
+# Docs & references not needed at runtime
+aidlc-docs
+image-references-UI
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml

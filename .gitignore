@@ -1,0 +1,43 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# typescript build cache
+tsconfig.tsbuildinfo
+
+# claude code machine-local settings
+.claude/settings.local.json
+
+# production
+/build
+
+# runtime user data (end-user vision projects created via the app)
+/projects
+
+# runtime accounts, sessions & per-user settings (contains password hashes and
+# API keys — MUST stay gitignored; SECURITY-12)
+/.aidlc
+
+# container/local data root (when AIDLC_DATA_DIR points here)
+/data
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+
+# local env files (NEVER commit secrets — SECURITY-12)
+.env
+.env*.local
+
+# testing
+/coverage
+
+# scratch dir used to validate the build executor
+/.buildtest

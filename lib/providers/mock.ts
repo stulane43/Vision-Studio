@@ -1,0 +1,183 @@
+// Deterministic provider — lets the whole app run and be tested WITHOUT an API key.
+// Produces idea-aware clarifying questions and a Vision Document.
+
+import type { Question, StageResult } from '../engine/types';
+import type { AiProvider, StageInput, StageMode } from './provider';
+
+function other(): Question['options'][number] {
+  return { key: 'X', label: 'Other (please describe)', isOther: true };
+}
+
+const VISION_QUESTIONS: Question[] = [
+  {
+    id: 'v1',
+    text: 'Who is the primary user of this product?',
+    options: [
+      { key: 'A', label: 'Everyday consumers' },
+      { key: 'B', label: 'Businesses / teams' },
+      { key: 'C', label: 'Internal / yourself' },
+      other(),
+    ],
+  },
+  {
+    id: 'v2',
+    text: 'What is the single most important outcome it should deliver?',
+    options: [
+      { key: 'A', label: 'Save people time' },
+      { key: 'B', label: 'Make or save money' },
+      { key: 'C', label: 'Reduce errors / risk' },
+      { key: 'D', label: 'Delight / engagement' },
+      other(),
+    ],
+  },
+  {
+    id: 'v3',
+    text: 'How big should the first version (MVP) be?',
+    options: [
+      { key: 'A', label: 'One core flow, done well' },
+      { key: 'B', label: 'A handful of flows' },
+      { key: 'C', label: 'Broad from day one' },
+      other(),
+    ],
+  },
+];
+
+const MORE_QUESTIONS: Question[] = [
+  {
+    id: 'm1',
+    text: 'What is the riskiest assumption behind this idea?',
+    options: [
+      { key: 'A', label: 'People actually want it' },
+      { key: 'B', label: 'We can build it well' },
+      { key: 'C', label: 'People will pay for it' },
+      other(),
+    ],
+  },
+  {
+    id: 'm2',
+    text: 'What does success look like 6 months after launch?',
+    options: [
+      { key: 'A', label: 'A loyal core of regular users' },
+      { key: 'B', label: 'Revenue / paying customers' },
+      { key: 'C', label: 'Proof for the next decision' },
+      other(),
+    ],
+  },
+];
+
+function answersBlock(input: StageInput): string {
+  if (!input.answers.length) return '';
+  const lines = input.answers.map((a) => {
+    const q = input.askedQuestions.find((x) => x.id === a.questionId);
+    const labels = a.selectedKeys.map((k) => q?.options.find((o) => o.key === k)?.label ?? k).join(', ');
+    const extra = a.otherText ? ` — ${a.otherText}` : '';
+    return `- **${q?.text ?? a.questionId}** → ${labels}${extra}`;
+  });
+  return `\n\n> **Decisions captured**\n${lines.join('\n')}`;
+}
+
+function feedbackBlock(input: StageInput): string {
+  if (!input.feedback.length) return '';
+  return `\n\n> **Revisions applied:** ${input.feedback.join('; ')}`;
+}
+
+function visionMarkdown(input: StageInput): { title: string; markdown: string; summary: string } {
+  const idea = input.project.idea.trim();
+  const name = input.project.name;
+  const extras = answersBlock(input) + feedbackBlock(input);
+  return {
+    title: `Vision Document — ${name}`,
+    summary: `Vision Document drafted for "${name}".`,
+    markdown: `# Vision Document — ${name}
+
+## Executive Summary
+${name} is a product that addresses: _${idea}_. It serves its target users by delivering a focused, well-scoped first version with a clear path to growth.
+
+## Business Context
+### Problem Statement
+${idea}
+
+### Business Drivers
+The opportunity is timely and the core flow is achievable as an MVP.
+
+### Target Users and Stakeholders
+| User Type | Description | Primary Need |
+|---|---|---|
+| Primary user | The main beneficiary of the idea | A simple way to achieve the core outcome |
+| Stakeholder | The owner/sponsor | A credible plan and a working MVP |
+
+### Success Metrics
+| Metric | Current State | Target State | Measurement Method |
+|---|---|---|---|
+| Core task completion | n/a | Users complete the core flow | In-app analytics |
+
+## Full Scope Vision
+### Product Vision Statement
+A complete, delightful realization of: _${idea}_.
+
+### Feature Areas
+- **Core capability** — the heart of the idea. *User value:* gets the job done.
+- **Supporting features** — onboarding, history, settings.
+
+### User Journeys (Full Vision)
+1. User arrives → 2. completes the core flow → 3. sees the outcome → 4. returns.
+
+## MVP Scope
+### MVP Objective
+Prove the core flow delivers value.
+
+### MVP Success Criteria
+- [ ] A user can complete the core flow end-to-end
+- [ ] The result is correct and useful
+
+### Features In Scope (MVP)
+| Feature | Description | Priority | Rationale |
+|---|---|---|---|
+| Core flow | The minimal path to value | Must Have | Validates the hypothesis |
+
+### Features Explicitly Out of Scope (MVP)
+| Feature | Reason for Deferral | Target Phase |
+|---|---|---|
+| Advanced features | Not needed to validate | Phase 2 |
+
+### MVP Definition of Done
+- [ ] Core flow works and is tested
+- [ ] Deployable/runnable
+
+## Risks and Dependencies
+### Key Risks
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Unclear demand | Medium | High | Ship MVP, measure |
+
+### Open Questions
+- [ ] What is the precise success metric target?${extras}
+
+_(Generated by the Mock provider — add an Anthropic API key in Settings for full AI generation.)_`,
+  };
+}
+
+export class MockProvider implements AiProvider {
+  id = 'mock' as const;
+
+  async runStage(input: StageInput, mode: StageMode): Promise<StageResult> {
+    if (mode === 'questions') {
+      return { kind: 'questions', questions: input.answers.length > 0 ? MORE_QUESTIONS : VISION_QUESTIONS };
+    }
+    const a = visionMarkdown(input);
+    return { kind: 'artifact', title: a.title, markdown: a.markdown, summary: a.summary };
+  }
+
+  async runStageStream(input: StageInput, mode: StageMode, onText: (t: string) => void): Promise<StageResult> {
+    if (mode === 'questions') {
+      return { kind: 'questions', questions: input.answers.length > 0 ? MORE_QUESTIONS : VISION_QUESTIONS };
+    }
+    const a = visionMarkdown(input);
+    for (let i = 0; i < a.markdown.length; i += 60) onText(a.markdown.slice(i, i + 60));
+    return { kind: 'artifact', title: a.title, markdown: a.markdown, summary: a.summary };
+  }
+
+  async testConnection(): Promise<void> {
+    // The Mock provider is always available (no network, no key).
+  }
+}

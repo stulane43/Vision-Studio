@@ -1,0 +1,29 @@
+# Vision Studio — deploy as a Portainer stack (or `docker compose up -d`).
+# Data (accounts, settings, projects) persists in the named volume below.
+
+services:
+  vision-studio:
+    build: .
+    image: vision-studio:latest
+    container_name: vision-studio
+    restart: unless-stopped
+    ports:
+      # host:container — reach the app at http://<host-ip>:3100
+      - "3100:3100"
+    environment:
+      NODE_ENV: production
+      AIDLC_DATA_DIR: /data
+      PORT: "3100"
+      # Default provider for brand-new accounts (each account can change it in Settings).
+      AIDLC_PROVIDER: mock
+      # Set to "true" ONLY if you put this behind HTTPS (enables Secure cookies + HSTS).
+      # Leave "false" for plain-HTTP access on your LAN, or sign-in will fail.
+      AIDLC_HTTPS: "false"
+      # Optional shared keys (fallback for accounts without their own key in Settings):
+      # ANTHROPIC_API_KEY: ""
+      # OPENAI_API_KEY: ""
+    volumes:
+      - vision-data:/data
+
+volumes:
+  vision-data:
