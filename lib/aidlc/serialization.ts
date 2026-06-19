@@ -5,10 +5,17 @@
 // ============================================================
 
 import { z } from 'zod';
-import type { Project } from '../engine/types';
+import type { DocumentType, Project } from '../engine/types';
+import { DEFAULT_DOCUMENT_TYPE, DOCUMENT_TYPES } from '../engine/types';
 import { STAGE_IDS } from '../engine/stages';
 
 const stageIdSchema = z.enum(STAGE_IDS as [string, ...string[]]);
+// Back-compat: legacy projects/artifacts predate documentType — and an unknown
+// stored value should never brick a project. Missing OR invalid → default to the
+// development vision document (SECURITY-13: validated on read, never trusted blindly).
+const documentTypeSchema = z
+  .enum(DOCUMENT_TYPES as [DocumentType, ...DocumentType[]])
+  .catch(DEFAULT_DOCUMENT_TYPE);
 
 const optionSchema = z.object({
   key: z.string(),
@@ -42,6 +49,7 @@ const runSchema = z.object({
 });
 const artifactSchema = z.object({
   stageId: stageIdSchema,
+  documentType: documentTypeSchema,
   path: z.string(),
   title: z.string(),
   markdown: z.string(),
@@ -49,15 +57,21 @@ const artifactSchema = z.object({
   updatedAt: z.string(),
   editedByUser: z.boolean().optional(),
 });
+const readinessSchema = z.object({
+  rating: z.enum(['yes', 'minor', 'major']),
+  at: z.string(),
+});
 export const projectSchema = z.object({
   id: z.string(),
   name: z.string(),
   idea: z.string(),
+  documentType: documentTypeSchema,
   isExisting: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
   run: runSchema,
   artifacts: z.array(artifactSchema),
+  readiness: readinessSchema.optional(),
   schemaVersion: z.number(),
 });
 

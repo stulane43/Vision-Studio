@@ -1,11 +1,12 @@
 // Storage abstraction — filesystem now, swappable for cloud later.
 
-import type { Project, StageId } from '../engine/types';
+import type { DocumentType, Project, StageId } from '../engine/types';
 
 export interface ProjectSummary {
   id: string;
   name: string;
   idea: string;
+  documentType: DocumentType;
   createdAt: string;
   updatedAt: string;
   currentStageId: StageId | null;

@@ -7,6 +7,7 @@ import { Window } from '@/components/retro/Window';
 import { Button } from '@/components/retro/Button';
 import { Empty, Pill, Spinner } from '@/components/retro/ui';
 import { api } from '@/lib/client/api';
+import { getDocumentType } from '@/lib/aidlc/documentTypes';
 import type { ProjectSummary } from '@/lib/storage/storage';
 import type { PublicSettings } from '@/lib/services/settings';
 import { NewProjectDialog } from './NewProjectDialog';
@@ -64,7 +65,7 @@ export function Desktop() {
             ⚙ Settings
           </Button>
           <Button variant="gold" size="sm" onClick={() => setShowNew(true)}>
-            ✨ New Vision
+            ✨ New Document
           </Button>
         </>
       }
@@ -73,19 +74,19 @@ export function Desktop() {
         <div className="row between wrap gap-3">
           <div style={{ maxWidth: 640 }}>
             <p style={{ marginTop: 0 }}>
-              Describe an idea and get a polished, structured <b>Vision Document</b> — executive summary, business
-              context, full-scope vision, MVP scope, risks, and open questions. The AI asks a few quick questions, then
-              writes it; you edit, refine, and download.
+              Pick a document type, describe what you need, and get a polished, AI-ready document — a{' '}
+              <b>Development Vision Document</b>, a <b>Business AI Task Brief</b>, or a <b>Presentation Brief</b>. The AI
+              asks a few quick questions tailored to your choice, then writes it; you edit, refine, and download.
             </p>
             <div className="row gap-1 wrap">
-              <Pill color="mint">1 · Describe your idea</Pill>
+              <Pill color="mint">1 · Pick a document type</Pill>
               <Pill color="sky">2 · Answer a few questions</Pill>
-              <Pill color="gold">3 · Get your Vision Document</Pill>
+              <Pill color="gold">3 · Get your document</Pill>
             </div>
           </div>
           <div className="col gap-1">
             <Button variant="gold" onClick={() => setShowNew(true)}>
-              ✨ New Vision Document
+              ✨ New Document
             </Button>
             {settings ? (
               <span className="small muted">
@@ -101,14 +102,14 @@ export function Desktop() {
         </div>
       </Window>
 
-      <Window title={`Your Visions ${projects ? `(${projects.length})` : ''}`} color="mint" icon="🗂️">
+      <Window title={`Your Documents ${projects ? `(${projects.length})` : ''}`} color="mint" icon="🗂️">
         {projects === null ? (
           <div className="row center" style={{ padding: 30 }}>
             <Spinner />
           </div>
         ) : projects.length === 0 ? (
           <Empty icon="📁">
-            No visions yet. Click <b>New Vision</b> to begin.
+            No documents yet. Click <b>New Document</b> to begin.
           </Empty>
         ) : (
           <div className="project-grid">
@@ -131,8 +132,11 @@ export function Desktop() {
                 >
                   {p.idea}
                 </div>
-                <div className="row between">
-                  <Pill color={p.complete ? 'mint' : 'gray'}>{p.complete ? 'Vision ready' : 'Draft'}</Pill>
+                <div className="row between wrap gap-1">
+                  <div className="row gap-1 wrap">
+                    <Pill color="lav">{getDocumentType(p.documentType).chipLabel}</Pill>
+                    <Pill color={p.complete ? 'mint' : 'gray'}>{p.complete ? 'Ready' : 'Draft'}</Pill>
+                  </div>
                   <span className="tiny muted">{new Date(p.updatedAt).toLocaleDateString()}</span>
                 </div>
               </div>

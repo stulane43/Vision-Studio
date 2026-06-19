@@ -1,6 +1,9 @@
 // SECURITY-05: input validation on all API parameters via Zod schemas.
 
 import { z } from 'zod';
+import { DOCUMENT_TYPES, type DocumentType } from '../engine/types';
+
+const documentTypeSchema = z.enum(DOCUMENT_TYPES as [DocumentType, ...DocumentType[]]);
 
 export const credentialsSchema = z.object({
   username: z
@@ -17,6 +20,8 @@ export const createProjectSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   idea: z.string().trim().min(3, 'Describe your idea (a few words at least)').max(8000),
   isExisting: z.boolean().optional().default(false),
+  // Allow-listed document type; the service applies the default when omitted.
+  documentType: documentTypeSchema.optional(),
 });
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
@@ -48,6 +53,10 @@ export const stageActionSchema = z.discriminatedUnion('action', [
     action: z.literal('edit'),
     stageId: z.string().min(1).max(64),
     markdown: z.string().max(200000),
+  }),
+  z.object({
+    action: z.literal('feedback'),
+    rating: z.enum(['yes', 'minor', 'major']),
   }),
   z.object({
     action: z.literal('revise'),

@@ -48,6 +48,7 @@ export class FsStorage implements Storage {
           id: p.id,
           name: p.name,
           idea: p.idea,
+          documentType: p.documentType,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
           currentStageId: p.run.currentStageId,

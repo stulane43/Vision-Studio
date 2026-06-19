@@ -1,7 +1,7 @@
 // Typed client-side API wrappers. Imports are type-only where they touch
 // server modules, so no Node code leaks into the browser bundle.
 
-import type { Answer, Project, StageId } from '@/lib/engine/types';
+import type { Answer, DocumentType, Project, StageId } from '@/lib/engine/types';
 import type { ProjectSummary } from '@/lib/storage/storage';
 import type { PublicSettings } from '@/lib/services/settings';
 
@@ -12,7 +12,8 @@ export type StageActionInput =
   | { action: 'approve'; stageId: StageId }
   | { action: 'request-changes'; stageId: StageId; feedback: string }
   | { action: 'edit'; stageId: StageId; markdown: string }
-  | { action: 'revise'; stageId: StageId; comments: { quote: string; note: string }[]; instruction: string };
+  | { action: 'revise'; stageId: StageId; comments: { quote: string; note: string }[]; instruction: string }
+  | { action: 'feedback'; rating: 'yes' | 'minor' | 'major' };
 
 export interface SettingsInput {
   provider: 'anthropic' | 'openai' | 'mock';
@@ -44,7 +45,7 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   listProjects: () => req<ProjectSummary[]>('/api/projects'),
-  createProject: (input: { name: string; idea: string; isExisting: boolean }) =>
+  createProject: (input: { name: string; idea: string; isExisting: boolean; documentType?: DocumentType }) =>
     req<Project>('/api/projects', { method: 'POST', body: JSON.stringify(input) }),
   getProject: (id: string) => req<Project>(`/api/projects/${id}`),
   deleteProject: (id: string) =>

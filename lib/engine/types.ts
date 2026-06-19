@@ -4,8 +4,17 @@
 
 export type PhaseId = 'inception';
 
-// This app produces a single artifact: the Vision Document.
+// This app runs a single stage that produces one document.
 export type StageId = 'vision';
+
+// The kind of document the user is creating. The stage is shared; the
+// document type selects the clarifying questions, output structure, and
+// artifact filename (see lib/aidlc/documentTypes.ts).
+export type DocumentType = 'dev-vision' | 'business-brief' | 'presentation-brief';
+export const DOCUMENT_TYPES: DocumentType[] = ['dev-vision', 'business-brief', 'presentation-brief'];
+// Back-compat + lowest-regression default: projects/artifacts with no stored
+// type are treated as Development Vision Documents (the original behavior).
+export const DEFAULT_DOCUMENT_TYPE: DocumentType = 'dev-vision';
 
 export type StageStatus =
   | 'locked' // not yet reachable
@@ -37,7 +46,8 @@ export interface Answer {
 
 export interface Artifact {
   stageId: StageId;
-  path: string; // project-relative, e.g. aidlc-docs/inception/requirements/requirements.md
+  documentType: DocumentType; // which kind of document this is
+  path: string; // project-relative, e.g. vision-document.md / business-brief.md
   title: string;
   markdown: string;
   version: number;
@@ -61,15 +71,23 @@ export interface Run {
   stages: StageState[];
 }
 
+// Lightweight post-approval feedback: "was this ready to use with AI?"
+export interface Readiness {
+  rating: 'yes' | 'minor' | 'major';
+  at: string; // ISO timestamp
+}
+
 export interface Project {
   id: string;
   name: string;
   idea: string;
+  documentType: DocumentType; // chosen at creation
   isExisting: boolean;
   createdAt: string;
   updatedAt: string;
   run: Run;
   artifacts: Artifact[];
+  readiness?: Readiness; // set when the user rates the finalized document
   schemaVersion: number;
 }
 
@@ -78,4 +96,4 @@ export type StageResult =
   | { kind: 'questions'; questions: Question[] }
   | { kind: 'artifact'; title: string; markdown: string; summary: string };
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;

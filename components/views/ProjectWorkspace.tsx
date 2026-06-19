@@ -9,6 +9,7 @@ import { Markdown } from '@/components/retro/Markdown';
 import { QuestionCard } from '@/components/retro/QuestionCard';
 import { SettingsDialog } from './SettingsDialog';
 import { api, type StageActionInput } from '@/lib/client/api';
+import { getDocumentType } from '@/lib/aidlc/documentTypes';
 import type { Answer, Project, StageState } from '@/lib/engine/types';
 import type { PublicSettings } from '@/lib/services/settings';
 
@@ -160,7 +161,7 @@ export function ProjectWorkspace({ id }: { id: string }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${(project.name || 'vision').replace(/[^a-z0-9-_]+/gi, '-')}-vision.md`;
+    a.download = `${(project.name || 'document').replace(/[^a-z0-9-_]+/gi, '-')}-${project.documentType}.md`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -259,16 +260,20 @@ export function ProjectWorkspace({ id }: { id: string }) {
     );
   }
 
+  const doc = getDocumentType(project.documentType);
+  const readinessLabel = (r: 'yes' | 'minor' | 'major') =>
+    r === 'yes' ? 'Ready to use' : r === 'minor' ? 'Minor edits' : 'Major edits';
   const showDoc = !busy && (cur?.status === 'awaiting-review' || complete) && !!artifact;
   const showQuestions = !busy && cur?.status === 'awaiting-answers';
 
   return (
     <Shell actions={headerActions}>
       <div style={{ maxWidth: 880, margin: '0 auto', width: '100%' }}>
-        <Window title="Vision Document" color={complete ? 'mint' : 'sky'} icon="📜">
+        <Window title={doc.label} color={complete ? 'mint' : 'sky'} icon="📜">
           <div className="row between wrap gap-1 mb-2">
-            <div className="row gap-1">
+            <div className="row gap-1 wrap">
               <Pill color="sky">{project.name}</Pill>
+              <Pill color="lav">{doc.chipLabel}</Pill>
               {complete ? <Pill color="mint">✓ finalized</Pill> : <Pill color="gray">draft</Pill>}
             </div>
             {artifact ? (
@@ -299,7 +304,7 @@ export function ProjectWorkspace({ id }: { id: string }) {
           {busy ? (
             <div className="card flat mb-2">
               <div className="row gap-2" style={{ marginBottom: liveText ? 10 : 0 }}>
-                <Thinking label={liveText ? 'Writing your Vision Document' : busyLabel} />
+                <Thinking label={liveText ? `Writing your ${doc.artifactTitle}` : busyLabel} />
                 <span className="tiny muted">{elapsed}s</span>
               </div>
               {liveText ? (
@@ -313,7 +318,7 @@ export function ProjectWorkspace({ id }: { id: string }) {
           {!busy && cur?.status === 'generating' ? (
             <div className="card flat mb-2">
               <div className="row gap-2" style={{ marginBottom: 8 }}>
-                <Thinking label="Your Vision Document is being written" />
+                <Thinking label={`Your ${doc.artifactTitle} is being written`} />
               </div>
               <p className="small muted" style={{ margin: 0 }}>
                 This keeps going even if you leave this page — it&apos;ll appear here when it&apos;s ready.
@@ -336,7 +341,7 @@ export function ProjectWorkspace({ id }: { id: string }) {
           {showQuestions && cur ? (
             <div>
               <p className="small muted" style={{ marginTop: 0 }}>
-                A few quick questions to sharpen your Vision Document:
+                A few quick questions to sharpen your {doc.label}:
               </p>
               {cur.questions.map((q, i) => {
                 const a = answers.find((x) => x.questionId === q.id) ?? { questionId: q.id, selectedKeys: [] };
@@ -362,9 +367,9 @@ export function ProjectWorkspace({ id }: { id: string }) {
                 <Button
                   variant="mint"
                   disabled={!canSubmit}
-                  onClick={() => actStream({ action: 'answers', stageId: VISION, answers }, 'Writing your Vision Document')}
+                  onClick={() => actStream({ action: 'answers', stageId: VISION, answers }, `Writing your ${doc.artifactTitle}`)}
                 >
-                  Generate Vision Document →
+                  Generate {doc.artifactTitle} →
                 </Button>
               </div>
               <p className="tiny muted mt-1" style={{ marginBottom: 0 }}>
@@ -459,6 +464,33 @@ export function ProjectWorkspace({ id }: { id: string }) {
                         ✨ Revise with AI
                       </Button>
                     </div>
+                  </div>
+                ) : null}
+
+                {complete && !project.readiness ? (
+                  <div className="card mt-2">
+                    <b>📝 Was this ready to use with AI?</b>
+                    <p className="small muted" style={{ margin: '4px 0 0' }}>
+                      A quick rating helps improve the document templates.
+                    </p>
+                    <div className="row gap-1 wrap mt-1">
+                      <Button variant="mint" size="sm" onClick={() => act({ action: 'feedback', rating: 'yes' }, 'Saving')}>
+                        👍 Yes, ready to use
+                      </Button>
+                      <Button variant="sky" size="sm" onClick={() => act({ action: 'feedback', rating: 'minor' }, 'Saving')}>
+                        ✏ Minor edits
+                      </Button>
+                      <Button variant="coral" size="sm" onClick={() => act({ action: 'feedback', rating: 'major' }, 'Saving')}>
+                        🔧 Major edits
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {complete && project.readiness ? (
+                  <div className="card flat mt-2">
+                    <span className="small muted">
+                      Thanks — feedback recorded: <b>{readinessLabel(project.readiness.rating)}</b>.
+                    </span>
                   </div>
                 ) : null}
 

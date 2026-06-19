@@ -2,6 +2,7 @@ import type { Project, StageId } from '@/lib/engine/types';
 import {
   approveStage,
   editArtifact,
+  recordFeedback,
   requestMoreQuestions,
   requestStageChanges,
   runCurrentStage,
@@ -38,6 +39,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         break;
       case 'edit':
         project = await editArtifact(user.id, id, body.stageId as StageId, body.markdown);
+        break;
+      case 'feedback':
+        project = await recordFeedback(user.id, id, body.rating);
         break;
       default:
         throw new Error('This action must use the streaming endpoint.');

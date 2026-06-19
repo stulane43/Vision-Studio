@@ -1,6 +1,6 @@
 // AI provider abstraction (pluggable). Implementations: Anthropic, OpenAI, Codex, Mock.
 
-import type { Answer, Question, StageId, StageResult } from '../engine/types';
+import type { Answer, DocumentType, Question, StageId, StageResult } from '../engine/types';
 
 export type StageMode = 'questions' | 'artifact';
 
@@ -20,6 +20,7 @@ export interface StageInput {
   stageTitle: string;
   stageBlurb: string;
   phase: string;
+  documentType: DocumentType; // selects role, questions, and output structure
   project: { name: string; idea: string; isExisting: boolean };
   priorArtifacts: PriorArtifact[];
   answers: Answer[];

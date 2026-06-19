@@ -5,10 +5,11 @@
 // ============================================================
 
 import crypto from 'node:crypto';
-import type { Answer, Artifact, Project, StageId } from '../engine/types';
-import { SCHEMA_VERSION } from '../engine/types';
+import type { Answer, Artifact, DocumentType, Project, Readiness, StageId } from '../engine/types';
+import { DEFAULT_DOCUMENT_TYPE, SCHEMA_VERSION } from '../engine/types';
 import * as M from '../engine/machine';
 import { getStageDef, PHASE_TITLES } from '../engine/stages';
+import { getDocumentType } from '../aidlc/documentTypes';
 import { getProvider } from '../providers';
 import type { PriorArtifact, ReviewComment, StageInput, StageMode } from '../providers/provider';
 import { stageAsksQuestions } from '../aidlc/prompts';
@@ -65,14 +66,16 @@ export async function deleteProject(userId: string, id: string): Promise<void> {
 
 export async function createProjectFromIdea(
   userId: string,
-  input: { name: string; idea: string; isExisting: boolean },
+  input: { name: string; idea: string; isExisting: boolean; documentType?: DocumentType },
 ): Promise<Project> {
   const id = crypto.randomUUID();
   const ts = now();
+  const documentType = input.documentType ?? DEFAULT_DOCUMENT_TYPE;
   const project: Project = {
     id,
     name: input.name,
     idea: input.idea,
+    documentType,
     isExisting: input.isExisting,
     createdAt: ts,
     updatedAt: ts,
@@ -83,9 +86,10 @@ export async function createProjectFromIdea(
   await getStorage(userId).saveProject(project);
   await getStorage(userId).appendAudit(
     id,
-    `# Audit Log — ${input.name}\n` + auditEntry('Project', 'Created', `Idea: ${input.idea}`),
+    `# Audit Log — ${input.name}\n` +
+      auditEntry('Project', 'Created', `Type: ${getDocumentType(documentType).label}\nIdea: ${input.idea}`),
   );
-  logger.info('Project created', { id });
+  logger.info('Project created', { id, documentType });
   return project;
 }
 
@@ -105,11 +109,13 @@ async function generateForCurrent(
   const cur = M.currentStage(p.run);
   if (!cur || cur.status !== 'active') return p;
   const def = getStageDef(cur.id);
+  const doc = getDocumentType(p.documentType);
   const input: StageInput = {
     stageId: cur.id,
-    stageTitle: def.title,
+    stageTitle: doc.artifactTitle,
     stageBlurb: def.blurb,
     phase: PHASE_TITLES[def.phase],
+    documentType: p.documentType,
     project: { name: p.name, idea: p.idea, isExisting: p.isExisting },
     priorArtifacts: priorArtifacts(p),
     answers: cur.answers,
@@ -136,21 +142,22 @@ async function generateForCurrent(
 
     if (result.kind === 'questions') {
       p.run = M.setQuestions(p.run, cur.id, result.questions);
-      return persist(userId, p, auditEntry(def.title, 'Clarifying questions issued', `${result.questions.length} question(s).`));
+      return persist(userId, p, auditEntry(doc.label, 'Clarifying questions issued', `${result.questions.length} question(s).`));
     }
 
     const existing = p.artifacts.find((a) => a.stageId === cur.id);
     const art: Artifact = {
       stageId: cur.id,
-      path: def.artifactPath,
+      documentType: p.documentType,
+      path: doc.artifactFileName,
       title: result.title,
       markdown: result.markdown,
       version: existing ? existing.version + 1 : 1,
       updatedAt: now(),
     };
     upsertArtifact(p, art);
-    p.run = M.setArtifact(p.run, cur.id, def.artifactPath, result.summary);
-    return persist(userId, p, auditEntry(def.title, 'Vision Document generated', result.summary));
+    p.run = M.setArtifact(p.run, cur.id, doc.artifactFileName, result.summary);
+    return persist(userId, p, auditEntry(doc.label, 'Document generated', result.summary));
   } catch (e) {
     p.run = M.reactivate(p.run, cur.id);
     await persistState(userId, p);
@@ -221,11 +228,13 @@ export async function requestMoreQuestions(userId: string, id: string, stageId: 
   const cur = M.getStage(p.run, stageId);
   if (cur.status !== 'awaiting-answers') throw new AppError('This stage is not awaiting answers', 409, 'stage_conflict');
   const def = getStageDef(stageId);
+  const doc = getDocumentType(p.documentType);
   const input: StageInput = {
     stageId,
-    stageTitle: def.title,
+    stageTitle: doc.artifactTitle,
     stageBlurb: def.blurb,
     phase: PHASE_TITLES[def.phase],
+    documentType: p.documentType,
     project: { name: p.name, idea: p.idea, isExisting: p.isExisting },
     priorArtifacts: priorArtifacts(p),
     answers,
@@ -267,4 +276,15 @@ export async function editArtifact(userId: string, id: string, stageId: StageId,
   art.editedByUser = true;
   art.updatedAt = now();
   return persist(userId, p, auditEntry(getStageDef(stageId).title, 'Edited by user'));
+}
+
+/** Record lightweight "ready to use with AI?" feedback on a finalized project. */
+export async function recordFeedback(userId: string, id: string, rating: Readiness['rating']): Promise<Project> {
+  const p = await loadProject(userId, id);
+  p.readiness = { rating, at: now() };
+  return persist(
+    userId,
+    p,
+    auditEntry(getDocumentType(p.documentType).label, 'Readiness feedback', `Ready to use with AI: ${rating}`),
+  );
 }

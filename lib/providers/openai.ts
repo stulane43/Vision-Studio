@@ -119,10 +119,10 @@ export class OpenAiProvider implements AiProvider {
 
   async runStage(input: StageInput, mode: StageMode): Promise<StageResult> {
     if (mode === 'questions') {
-      const text = await this.call(buildSystemPrompt('questions'), buildUserPrompt(input, 'questions'), 2000);
+      const text = await this.call(buildSystemPrompt(input, 'questions'), buildUserPrompt(input, 'questions'), 2000);
       return { kind: 'questions', questions: parseQuestions(text) };
     }
-    const text = await this.call(buildSystemPrompt('artifact'), buildUserPrompt(input, 'artifact'), 8000);
+    const text = await this.call(buildSystemPrompt(input, 'artifact'), buildUserPrompt(input, 'artifact'), 8000);
     const art = markdownToArtifact(text, input.stageTitle);
     return { kind: 'artifact', title: art.title, markdown: art.markdown, summary: art.summary };
   }
@@ -131,7 +131,7 @@ export class OpenAiProvider implements AiProvider {
     if (mode === 'questions') {
       return this.runStage(input, 'questions');
     }
-    const text = await this.callStream(buildSystemPrompt('artifact'), buildUserPrompt(input, 'artifact'), 8000, onText);
+    const text = await this.callStream(buildSystemPrompt(input, 'artifact'), buildUserPrompt(input, 'artifact'), 8000, onText);
     const art = markdownToArtifact(text, input.stageTitle);
     return { kind: 'artifact', title: art.title, markdown: art.markdown, summary: art.summary };
   }
